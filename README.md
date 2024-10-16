@@ -1,7 +1,7 @@
 # Pipeline Cloud Database Connection
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
-This project demonstrates how to connect to a database service called Pipeline Cloud using Python. It includes two approaches: a vanilla connection using `pyodbc` and a more advanced connection using `SQLAlchemy`.
+This project demonstrates how to connect to a database service called Pipeline Cloud using Python. It includes two approaches: a vanilla connection using `pyodbc`.
 
 To utilise this connection method, you will require a 'headless user' (service account), that is linked with your primary Azure MFA user account. For more details on this process, you can speak with your Bonterra account manager. 
 
@@ -54,7 +54,6 @@ To connect to the Pipeline Cloud database, you'll need to create a `.env` file i
 ├── README.md
 └── pipelinecloud
     ├── dbconnection_basic.py
-    └── dbconnection_sqlalchemy.py
 ```
 
 - **`.env.example`**: Template for environment variables.
@@ -88,10 +87,6 @@ To connect to the Pipeline Cloud database, you'll need to create a `.env` file i
      ```bash
      poetry run connect-basic
      ```
-   - **SQLAlchemy Database Connection**: Run the advanced connection script using `SQLAlchemy`.
-     ```bash
-     poetry run connect-sqlalchemy
-     ```
    - **Run All**: Execute the precheck and both connection methods sequentially.
      ```bash
      poetry run full-check
@@ -105,10 +100,6 @@ To connect to the Pipeline Cloud database, you'll need to create a `.env` file i
    - **Basic Database Connection**: 
      ```bash
      python pipelinecloud/dbconnection_basic.py
-     ```
-   - **SQLAlchemy Database Connection**: 
-     ```bash
-     python pipelinecloud/dbconnection_sqlalchemy.py
      ```
 
 **Note**: When running scripts directly, ensure that your Python environment is set up correctly and all dependencies are installed. You may need to activate the virtual environment created by Poetry using `poetry shell`.
@@ -128,10 +119,10 @@ Docker is a platform that allows you to package applications and their dependenc
    This command will build the Docker image and start the container, running the application with the default script.
 
 2. **Switch Scripts**: 
-   - By default, the application runs `dbconnection_basic.py`. To run `dbconnection_sqlalchemy.py`, modify the `CMD` in the `Dockerfile`:
+   - By default, the application runs `dbconnection_basic.py`. To run `precheck.py`, modify the `CMD` in the `Dockerfile`:
      ```dockerfile
-     # Change the CMD line to run the SQLAlchemy script
-     CMD ["poetry", "run", "connect-sqlalchemy"]
+     # Change the CMD line to run the pre-check script
+     CMD ["poetry", "run", "precheck"]
      ```
 
 3. **Naming the Docker Container**:
@@ -155,7 +146,7 @@ Docker is a platform that allows you to package applications and their dependenc
 
 ## Placeholder Function
 
-Both scripts include a placeholder function for querying the database. Replace the example query with your specific SQL or SQLAlchemy query to fetch data and log it to the console.
+Both scripts include a placeholder function for querying the database. Replace the example query with your specific SQL query to fetch data and log it to the console.
 
 ## FAQ and Common Errors
 
