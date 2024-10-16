@@ -10,6 +10,7 @@ python = "^3.11"
 pyodbc = "^5.2.0"
 msal = "^1.31.0"
 pem = "^23.1.0"
+sqlalchemy = "^2.0.36"
 pyjwt = "^2.9.0"
 python-dotenv = "^1.0.1"
 
@@ -21,5 +22,6 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 connect-basic = "pipelinecloud.dbconnection_basic:connect_to_database"
+connect-sqlalchemy = "pipelinecloud.dbconnection_sqlalchemy:connect_to_database"
 precheck = "pipelinecloud.precheck:run_precheck"
 full-check = "pipelinecloud.full_check:full_check"
