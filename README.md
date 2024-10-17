@@ -1,7 +1,7 @@
 # Pipeline Cloud Database Connection
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
-This project demonstrates how to connect to a database service called Pipeline Cloud using Python. It includes two approaches: a vanilla connection using `pyodbc`.
+This project demonstrates how to connect to a database service called Pipeline Cloud using Python. It includes two approaches: a vanilla connection using `pyodbc` and a more advanced connection using `SQLAlchemy`.
 
 To utilise this connection method, you will require a 'headless user' (service account), that is linked with your primary Azure MFA user account. For more details on this process, you can speak with your Bonterra account manager. 
 
@@ -54,6 +54,7 @@ To connect to the Pipeline Cloud database, you'll need to create a `.env` file i
 ├── README.md
 └── pipelinecloud
     ├── dbconnection_basic.py
+    └── dbconnection_sqlalchemy.py
 ```
 
 - **`.env.example`**: Template for environment variables.
@@ -87,6 +88,10 @@ To connect to the Pipeline Cloud database, you'll need to create a `.env` file i
      ```bash
      poetry run connect-basic
      ```
+   - **SQLAlchemy Database Connection**: Run the advanced connection script using `SQLAlchemy`.
+     ```bash
+     poetry run connect-sqlalchemy
+     ```
    - **Run All**: Execute the precheck and both connection methods sequentially.
      ```bash
      poetry run full-check
@@ -101,9 +106,80 @@ To connect to the Pipeline Cloud database, you'll need to create a `.env` file i
      ```bash
      python pipelinecloud/dbconnection_basic.py
      ```
+   - **SQLAlchemy Database Connection**: 
+     ```bash
+     python pipelinecloud/dbconnection_sqlalchemy.py
+     ```
 
 **Note**: When running scripts directly, ensure that your Python environment is set up correctly and all dependencies are installed. You may need to activate the virtual environment created by Poetry using `poetry shell`.
 
+## SQLAlchemy Implementation with Azure AD Authentication
+
+This project uses SQLAlchemy in conjunction with `pyodbc` to connect to an Azure SQL Database using Azure Active Directory (AD) tokens. This approach leverages the strengths of both libraries to provide a secure and efficient way to interact with the database.
+
+### Why Use `pyodbc` with SQLAlchemy?
+
+- **Authentication**: `pyodbc` is used to handle the authentication process with Azure AD tokens. This is necessary because the ODBC driver for SQL Server supports Azure AD authentication, but requires specific handling of the access token.
+- **Database Interactions**: SQLAlchemy provides a high-level ORM (Object-Relational Mapping) interface, allowing you to interact with the database using Python objects and methods. This makes it easier to manage database operations and transactions.
+
+### How It Works
+
+1. **Token Preparation**: 
+   - The Azure AD access token is prepared using Python's `struct` module. This involves converting the token into a format that `pyodbc` can use to authenticate with the SQL Server.
+
+2. **Connection Setup**:
+   - A connection string is constructed without the `Authentication` attribute. Instead, the access token is passed directly to `pyodbc` using the `attrs_before` parameter. This bypasses the need for the `Authentication` attribute in the connection string.
+
+3. **SQLAlchemy Engine Creation**:
+   - The SQLAlchemy engine is created using the connection established by `pyodbc`. This engine is then used to perform database operations, such as executing SQL queries and managing transactions.
+
+4. **Reflection and Raw SQL**:
+   - SQLAlchemy's reflection feature is used to dynamically load table definitions from the Azure SQL database. This allows you to interact with tables without manually defining models.
+   - Raw SQL queries can be executed using SQLAlchemy's `text()` construct, providing flexibility for complex queries.
+
+### Benefits of This Approach
+
+- **Security**: By using Azure AD tokens, this implementation ensures secure authentication without the need for storing passwords.
+- **Flexibility**: The combination of `pyodbc` and SQLAlchemy allows for flexible and powerful database interactions, leveraging the best features of both libraries.
+- **Compatibility**: This approach is compatible with Azure SQL Database and can be adapted for use with other Azure services that support AD authentication.
+
+### Example Code
+
+Below are examples of how to query the database using different methods:
+
+#### Reflecting a Table and Querying with ORM
+
+```python
+from sqlalchemy.orm import sessionmaker
+
+def query_table(engine, table_name):
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    table = reflect_table(engine, table_name)
+    query = session.query(table).limit(10)
+    results = query.all()
+    for row in results:
+        print(row)
+    session.close()
+```
+
+#### Executing a Raw SQL Query
+
+```python
+from sqlalchemy import text
+
+def execute_raw_query(engine):
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    raw_query = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE';"
+    result = session.execute(text(raw_query))
+    tables = result.fetchall()
+    for table in tables:
+        print(table[0])
+    session.close()
+```
+
+This setup ensures that your application can securely connect to Azure SQL Database using modern authentication methods, while still benefiting from the powerful features of SQLAlchemy. The hybrid approach with reflection and raw SQL execution provides flexibility and ease of use, especially when dealing with a large number of tables or complex queries.
 
 ## Running the Application in Docker
 
@@ -119,10 +195,10 @@ Docker is a platform that allows you to package applications and their dependenc
    This command will build the Docker image and start the container, running the application with the default script.
 
 2. **Switch Scripts**: 
-   - By default, the application runs `dbconnection_basic.py`. To run `precheck.py`, modify the `CMD` in the `Dockerfile`:
+   - By default, the application runs `dbconnection_basic.py`. To run `dbconnection_sqlalchemy.py`, modify the `CMD` in the `Dockerfile`:
      ```dockerfile
-     # Change the CMD line to run the pre-check script
-     CMD ["poetry", "run", "precheck"]
+     # Change the CMD line to run the SQLAlchemy script
+     CMD ["poetry", "run", "connect-sqlalchemy"]
      ```
 
 3. **Naming the Docker Container**:
@@ -146,7 +222,7 @@ Docker is a platform that allows you to package applications and their dependenc
 
 ## Placeholder Function
 
-Both scripts include a placeholder function for querying the database. Replace the example query with your specific SQL query to fetch data and log it to the console.
+Both scripts include a placeholder function for querying the database. Replace the example query with your specific SQL or SQLAlchemy query to fetch data and log it to the console.
 
 ## FAQ and Common Errors
 
