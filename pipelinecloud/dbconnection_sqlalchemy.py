@@ -2,7 +2,7 @@ from msal import ConfidentialClientApplication
 import os
 import logging
 import jwt
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, MetaData, Table, text
 from sqlalchemy.orm import sessionmaker
 import urllib
 import pem
@@ -106,6 +106,15 @@ def get_sqlalchemy_engine(token):
     return engine
 
 
+def reflect_table(engine, table_name):
+    """
+    Reflect a table from the database using SQLAlchemy's reflection feature.
+    """
+    metadata = MetaData()
+    table = Table(table_name, metadata, autoload_with=engine)
+    return table
+
+
 def connect_to_database():
     """
     Connect to the database using SQLAlchemy and the access token obtained from Azure AD.
@@ -136,42 +145,24 @@ def connect_to_database():
         Session = sessionmaker(bind=engine)
         session = Session()
 
-        # Call the placeholder function to interact with the database
-        interact_with_database(session)
+        # Example: Reflect a table and query it
+        table_name = "Users" # Replace with your table name
+        table = reflect_table(engine, table_name)
+        query = session.query(table).limit(10)
+        results = query.all()
+        for row in results:
+            logging.info(row)
 
-    except Exception as e:
-        logging.error("Error connecting to SQL Server with SQLAlchemy: %s", e)
-
-
-def interact_with_database(session):
-    """
-    Placeholder function to interact with the database.
-    Fetches a list of tables as an example.
-    """
-    try:
-        # Example query to fetch a list of tables
-        result = session.execute(
-            text(
-                "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE';"
-            )
-        )
+        # Example: Execute a raw SQL query
+        raw_query = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE';"
+        result = session.execute(text(raw_query))
         tables = result.fetchall()
         logging.info("Tables in the database:")
         for table in tables:
             logging.info(table[0])
 
-        # Additional example queries (commented out)
-        # result = session.execute(text("SELECT COUNT(*) FROM some_table;"))
-        # count = result.fetchone()
-        # logging.info("Number of rows in some_table: %s", count[0])
-
-        # result = session.execute(text("SELECT TOP 10 * FROM some_table;"))
-        # rows = result.fetchall()
-        # for row in rows:
-        #     logging.info(row)
-
     except Exception as e:
-        logging.error("Error executing query: %s", e)
+        logging.error("Error connecting to SQL Server with SQLAlchemy: %s", e)
 
 
 if __name__ == "__main__":

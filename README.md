@@ -133,6 +133,10 @@ This project uses SQLAlchemy in conjunction with `pyodbc` to connect to an Azure
 3. **SQLAlchemy Engine Creation**:
    - The SQLAlchemy engine is created using the connection established by `pyodbc`. This engine is then used to perform database operations, such as executing SQL queries and managing transactions.
 
+4. **Reflection and Raw SQL**:
+   - SQLAlchemy's reflection feature is used to dynamically load table definitions from the Azure SQL database. This allows you to interact with tables without manually defining models.
+   - Raw SQL queries can be executed using SQLAlchemy's `text()` construct, providing flexibility for complex queries.
+
 ### Benefits of This Approach
 
 - **Security**: By using Azure AD tokens, this implementation ensures secure authentication without the need for storing passwords.
@@ -141,35 +145,41 @@ This project uses SQLAlchemy in conjunction with `pyodbc` to connect to an Azure
 
 ### Example Code
 
-Below is a simplified example of how the connection is established:
+Below are examples of how to query the database using different methods:
+
+#### Reflecting a Table and Querying with ORM
 
 ```python
-import struct
-import pyodbc
-from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-def get_sqlalchemy_engine(token):
-    connection_string = (
-        f"DRIVER={{ODBC Driver 18 for SQL Server}};"
-        f"SERVER=your_server;"
-        f"DATABASE=your_database;"
-    )
-
-    SQL_COPT_SS_ACCESS_TOKEN = 1256
-    exptoken = b''
-    for i in bytes(token, "UTF-8"):
-        exptoken += bytes({i})
-        exptoken += bytes(1)
-    tokenstruct = struct.pack("=i", len(exptoken)) + exptoken
-
-    engine = create_engine(
-        f"mssql+pyodbc:///?odbc_connect={urllib.parse.quote_plus(connection_string)}",
-        connect_args={"attrs_before": {SQL_COPT_SS_ACCESS_TOKEN: tokenstruct}}
-    )
-    return engine
+def query_table(engine, table_name):
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    table = reflect_table(engine, table_name)
+    query = session.query(table).limit(10)
+    results = query.all()
+    for row in results:
+        print(row)
+    session.close()
 ```
 
-This setup ensures that your application can securely connect to Azure SQL Database using modern authentication methods, while still benefiting from the powerful features of SQLAlchemy.
+#### Executing a Raw SQL Query
+
+```python
+from sqlalchemy import text
+
+def execute_raw_query(engine):
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    raw_query = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE';"
+    result = session.execute(text(raw_query))
+    tables = result.fetchall()
+    for table in tables:
+        print(table[0])
+    session.close()
+```
+
+This setup ensures that your application can securely connect to Azure SQL Database using modern authentication methods, while still benefiting from the powerful features of SQLAlchemy. The hybrid approach with reflection and raw SQL execution provides flexibility and ease of use, especially when dealing with a large number of tables or complex queries.
 
 ## Running the Application in Docker
 
