@@ -113,6 +113,63 @@ To connect to the Pipeline Cloud database, you'll need to create a `.env` file i
 
 **Note**: When running scripts directly, ensure that your Python environment is set up correctly and all dependencies are installed. You may need to activate the virtual environment created by Poetry using `poetry shell`.
 
+## SQLAlchemy Implementation with Azure AD Authentication
+
+This project uses SQLAlchemy in conjunction with `pyodbc` to connect to an Azure SQL Database using Azure Active Directory (AD) tokens. This approach leverages the strengths of both libraries to provide a secure and efficient way to interact with the database.
+
+### Why Use `pyodbc` with SQLAlchemy?
+
+- **Authentication**: `pyodbc` is used to handle the authentication process with Azure AD tokens. This is necessary because the ODBC driver for SQL Server supports Azure AD authentication, but requires specific handling of the access token.
+- **Database Interactions**: SQLAlchemy provides a high-level ORM (Object-Relational Mapping) interface, allowing you to interact with the database using Python objects and methods. This makes it easier to manage database operations and transactions.
+
+### How It Works
+
+1. **Token Preparation**: 
+   - The Azure AD access token is prepared using Python's `struct` module. This involves converting the token into a format that `pyodbc` can use to authenticate with the SQL Server.
+
+2. **Connection Setup**:
+   - A connection string is constructed without the `Authentication` attribute. Instead, the access token is passed directly to `pyodbc` using the `attrs_before` parameter. This bypasses the need for the `Authentication` attribute in the connection string.
+
+3. **SQLAlchemy Engine Creation**:
+   - The SQLAlchemy engine is created using the connection established by `pyodbc`. This engine is then used to perform database operations, such as executing SQL queries and managing transactions.
+
+### Benefits of This Approach
+
+- **Security**: By using Azure AD tokens, this implementation ensures secure authentication without the need for storing passwords.
+- **Flexibility**: The combination of `pyodbc` and SQLAlchemy allows for flexible and powerful database interactions, leveraging the best features of both libraries.
+- **Compatibility**: This approach is compatible with Azure SQL Database and can be adapted for use with other Azure services that support AD authentication.
+
+### Example Code
+
+Below is a simplified example of how the connection is established:
+
+```python
+import struct
+import pyodbc
+from sqlalchemy import create_engine
+
+def get_sqlalchemy_engine(token):
+    connection_string = (
+        f"DRIVER={{ODBC Driver 18 for SQL Server}};"
+        f"SERVER=your_server;"
+        f"DATABASE=your_database;"
+    )
+
+    SQL_COPT_SS_ACCESS_TOKEN = 1256
+    exptoken = b''
+    for i in bytes(token, "UTF-8"):
+        exptoken += bytes({i})
+        exptoken += bytes(1)
+    tokenstruct = struct.pack("=i", len(exptoken)) + exptoken
+
+    engine = create_engine(
+        f"mssql+pyodbc:///?odbc_connect={urllib.parse.quote_plus(connection_string)}",
+        connect_args={"attrs_before": {SQL_COPT_SS_ACCESS_TOKEN: tokenstruct}}
+    )
+    return engine
+```
+
+This setup ensures that your application can securely connect to Azure SQL Database using modern authentication methods, while still benefiting from the powerful features of SQLAlchemy.
 
 ## Running the Application in Docker
 

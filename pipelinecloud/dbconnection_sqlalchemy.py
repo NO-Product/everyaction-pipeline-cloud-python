@@ -7,6 +7,8 @@ from sqlalchemy.orm import sessionmaker
 import urllib
 import pem
 from dotenv import load_dotenv
+import struct
+import pyodbc
 
 # Load environment variables from a .env file
 load_dotenv()
@@ -80,24 +82,26 @@ def get_sqlalchemy_engine(token):
     """
     Create a SQLAlchemy engine using the Azure AD token.
     """
-    # Construct the connection string with the token
+    # Construct the connection string without the token
     connection_string = (
-        f"Driver={{ODBC Driver 18 for SQL Server}};"
-        f"Server={SQL_SERVER};"
-        f"Database={DATABASE};"
-        "Authentication=ActiveDirectoryAccessToken;"
-        f"AccessToken={token}"
+        f"DRIVER={{ODBC Driver 18 for SQL Server}};"
+        f"SERVER={SQL_SERVER};"
+        f"DATABASE={DATABASE};"
     )
 
-    # URL encode the connection string
-    encoded_connection_string = urllib.parse.quote_plus(connection_string)
+    # Prepare the token for pyodbc
+    SQL_COPT_SS_ACCESS_TOKEN = 1256
+    exptoken = b''
+    for i in bytes(token, "UTF-8"):
+        exptoken += bytes({i})
+        exptoken += bytes(1)
+    tokenstruct = struct.pack("=i", len(exptoken)) + exptoken
 
-    # Log the encoded connection string for debugging
-    logging.debug("Encoded connection string: %s", encoded_connection_string)
-
-    # Create the SQLAlchemy engine
+    # Create the SQLAlchemy engine using pyodbc
     engine = create_engine(
-        f"mssql+pyodbc:///?odbc_connect={encoded_connection_string}", echo=True
+        f"mssql+pyodbc:///?odbc_connect={urllib.parse.quote_plus(connection_string)}",
+        echo=True,
+        connect_args={"attrs_before": {SQL_COPT_SS_ACCESS_TOKEN: tokenstruct}}
     )
     return engine
 
